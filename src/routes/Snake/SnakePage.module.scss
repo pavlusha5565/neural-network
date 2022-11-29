@@ -1,0 +1,22 @@
+.Snake {
+}
+
+.SnakePlayground {
+}
+
+$blockSize: 32px;
+
+.SnakePlayground__row {
+  display: flex;
+  .SnakePlayground__block {
+    width: $blockSize;
+    height: $blockSize;
+    border: 1px solid black;
+    &.snake {
+      background-color: black;
+    }
+    &.apple {
+      background-color: green;
+    }
+  }
+}
