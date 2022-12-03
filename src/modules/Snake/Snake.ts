@@ -1,18 +1,21 @@
-import { makeAutoObservable } from "mobx";
+import { action, computed, makeObservable, observable } from "mobx";
 import { IActorSetting } from "../Actor/Actor.types";
 import {
   EGameState,
   EHitEvent,
-  ESnakeDirection,
   ISnakeGame,
   ISnakeSetting,
-  ISnakeStore,
-  T2DCoord,
+  ISnakeStore as ISnakeScore,
 } from "./Snake.types";
-import { random } from "lodash";
-import { sumArrays } from "../../utils/math";
+import { cloneDeep, random } from "lodash";
+import {
+  calculateVector,
+  directionToVector,
+  sumArrays,
+} from "../../utils/math";
 import { applyObject } from "../../utils/objects";
 import AActor from "../Actor/Actor";
+import { EDirection, T2DCoord } from "../../utils/global.types";
 
 const defaultActoreSetting: IActorSetting = {
   name: "ASnake Actor",
@@ -26,9 +29,10 @@ const settingDefault: ISnakeSetting = {
   startSpeed: 1,
   logger: false,
   score: {
-    win: 500,
-    lose: 100,
+    win: 100,
+    lose: 50,
     apple: 5,
+    tick: 1,
   },
 };
 
@@ -36,30 +40,53 @@ const gameDefault: ISnakeGame = {
   snake: [[0, 0]],
   speed: 1,
   apple: [5, 5],
-  direction: ESnakeDirection.down,
+  direction: EDirection.down,
 };
 
-const storeDefault: ISnakeStore = {
+const scoreDefault: ISnakeScore = {
   totalScore: 0,
   appleScore: 0,
   totalGame: 0,
 };
 
-export class ASnake {
+export class ASnake extends AActor {
   setting: ISnakeSetting = settingDefault;
   game: ISnakeGame = gameDefault;
-  store: ISnakeStore = storeDefault;
+  score: ISnakeScore = scoreDefault;
   state: EGameState = EGameState.ready;
+  timeStore: { [key: string]: number } = {};
 
   constructor(setting: Partial<ISnakeSetting> = {}) {
+    super(defaultActoreSetting);
     applyObject(this.setting, setting);
 
-    makeAutoObservable(this);
+    makeObservable(this, {
+      setting: observable,
+      game: observable,
+      score: observable,
+      state: observable,
+      makeGame: action,
+      makeSnake: action,
+      makeApple: action,
+      start: action,
+      stop: action,
+      restart: action,
+      resume: action,
+      eatApple: action,
+      endGame: action,
+      move: action,
+      setDirection: action,
+      appleVector: computed,
+      snakeMoveVector: computed,
+    });
+
+    // @ts-ignore
+    window.snake = this;
 
     this.makeGame();
   }
 
-  public static generateCoordinate(width: number, height: number): T2DCoord {
+  public static generate2DCoord(width: number, height: number): T2DCoord {
     return [random(0, width - 1), random(0, height - 1)];
   }
 
@@ -72,7 +99,21 @@ export class ASnake {
     );
   }
 
-  checkSettings() {
+  get appleVector(): T2DCoord | null {
+    if (!this.game.apple) return null;
+    const head = this.game.snake[0];
+    const apple = this.game.apple;
+
+    return calculateVector(head, apple);
+  }
+
+  get snakeMoveVector(): T2DCoord {
+    const direction = this.game.direction;
+    const vector = directionToVector(direction);
+    return vector;
+  }
+
+  checkSettings(): void {
     const setting = this.setting;
     if (setting.width < 6 || setting.height < 6) {
       this.logger("Snake playground size in wrong. Reset to minimal", "warn");
@@ -85,29 +126,39 @@ export class ASnake {
     }
   }
 
-  makeGame() {
+  get playground(): Array<Array<T2DCoord>> {
+    const playgroundMatrix: Array<Array<T2DCoord>> = [];
+    for (let x = 0; x < this.setting.width; x++) {
+      for (let y = 0; y < this.setting.height; y++) {
+        if (!playgroundMatrix[x]) playgroundMatrix[x] = [];
+        playgroundMatrix[x][y] = [x, y] as T2DCoord;
+      }
+    }
+    return playgroundMatrix;
+  }
+
+  makeGame(): void {
     this.game = { ...gameDefault, speed: this.setting.startSpeed };
 
     this.makeSnake();
     this.makeApple();
 
+    this.score.appleScore = 0;
+
     this.state = EGameState.ready;
     this.logger("Init game");
   }
 
-  makeSnake() {
+  makeSnake(): void {
     this.game.snake = [[this.setting.width / 2, this.setting.height / 2]];
+    this.logger("generated snake: " + JSON.stringify(this.game.snake));
   }
 
-  makeApple() {
-    if (this.setting.width * this.setting.height >= this.game.snake.length) {
-      this.endGame(EGameState.win);
-      return;
-    }
-
+  makeApple(): void {
     let interation = 0;
-    while (interation < 128) {
-      const rundCoord: T2DCoord = ASnake.generateCoordinate(
+    while (interation < 256) {
+      interation++;
+      const rundCoord: T2DCoord = ASnake.generate2DCoord(
         this.setting.width,
         this.setting.height
       );
@@ -147,73 +198,72 @@ export class ASnake {
     return null;
   }
 
-  start() {
+  start(): void {
     this.logger("Start game");
     this.makeGame();
     this.state = EGameState.playing;
+    this.StartActorTick();
   }
 
-  stop() {
+  stop(): void {
     this.logger("Stop game");
     this.state = EGameState.pause;
+    this.StopActorTick();
   }
 
-  resume() {
+  resume(): void {
     this.logger("Resume game");
     this.state = EGameState.playing;
+    this.StartActorTick();
   }
 
-  restart() {
+  restart(): void {
     this.logger("Restart game");
-    this.stop();
+    this.StopActorTick();
     this.makeGame();
+    console.log(cloneDeep(this.game.snake));
   }
 
-  endGame(state: EGameState) {
+  endGame(state: EGameState): void {
     this.state = state;
     if (state === EGameState.lose) {
-      this.store.totalScore -= this.setting.score.lose;
-      if (this.store.totalScore < 0) this.store.totalScore = 0;
+      this.score.totalScore -= this.setting.score.lose;
+      if (this.score.totalScore < 0) this.score.totalScore = 0;
     }
     if (state === EGameState.win) {
-      this.store.totalScore += this.setting.score.win;
+      this.score.totalScore += this.setting.score.win;
     }
+
+    this.score.totalGame += 1;
     this.restart();
 
     this.logger("*****************");
     this.logger("End game(" + state + ")");
-    this.logger("Score: " + this.store.totalScore);
-    this.logger("Game: " + this.store.totalGame);
-    this.logger("Apple: " + this.store.appleScore);
+    this.logger("Score: " + this.score.totalScore);
+    this.logger("Game: " + this.score.totalGame);
+    this.logger("Apple: " + this.score.appleScore);
     this.logger("*****************");
   }
 
-  eatApple() {
-    this.store.appleScore += 1;
-    this.store.totalScore += this.setting.score.apple;
+  eatApple(): void {
+    this.score.appleScore += 1;
+    this.score.totalScore += this.setting.score.apple;
+
+    if (this.setting.width * this.setting.height <= this.game.snake.length) {
+      this.endGame(EGameState.win);
+      return;
+    }
 
     this.logger("*****************");
-    this.logger("Score: " + this.store.totalScore);
-    this.logger("Apple: " + this.store.appleScore);
+    this.logger("Score: " + this.score.totalScore);
+    this.logger("Apple: " + this.score.appleScore);
     this.logger("*****************");
   }
 
-  move() {
-    const direction = this.game.direction;
+  move(): { position: T2DCoord; hit: EHitEvent | null } {
     const snake = [...this.game.snake];
-    const deltaPosition: T2DCoord = [
-      direction === ESnakeDirection.up
-        ? -1
-        : direction === ESnakeDirection.down
-        ? 1
-        : 0,
-      direction === ESnakeDirection.right
-        ? 1
-        : direction === ESnakeDirection.left
-        ? -1
-        : 0,
-    ];
 
+    const deltaPosition: T2DCoord = this.snakeMoveVector;
     const snakeHead: T2DCoord = snake[0];
     const nextPosition = sumArrays(snakeHead, deltaPosition) as T2DCoord;
     const hit = this.checkHit(nextPosition);
@@ -225,38 +275,34 @@ export class ASnake {
 
       this.game.snake = snake;
       this.logger("hit: " + EHitEvent.apple);
-      return;
+      return { position: nextPosition, hit };
     }
 
     if (hit === EHitEvent.snake || hit === EHitEvent.wall) {
       this.endGame(EGameState.lose);
-      this.logger("hit: " + EHitEvent.wall);
-      return;
+      this.logger("hit: " + hit);
+      return { position: nextPosition, hit };
     }
 
     snake.pop();
+
     this.game.snake = snake;
+    return { position: nextPosition, hit };
   }
 
-  direction(direction: ESnakeDirection) {
-    if (
-      direction === ESnakeDirection.up ||
-      direction === ESnakeDirection.down
-    ) {
+  setDirection(direction: EDirection): void {
+    if (direction === EDirection.up || direction === EDirection.down) {
       if (
-        this.game.direction === ESnakeDirection.up ||
-        this.game.direction === ESnakeDirection.down
+        this.game.direction === EDirection.up ||
+        this.game.direction === EDirection.down
       ) {
         return;
       }
     }
-    if (
-      direction === ESnakeDirection.left ||
-      direction === ESnakeDirection.right
-    ) {
+    if (direction === EDirection.left || direction === EDirection.right) {
       if (
-        this.game.direction === ESnakeDirection.left ||
-        this.game.direction === ESnakeDirection.right
+        this.game.direction === EDirection.left ||
+        this.game.direction === EDirection.right
       ) {
         return;
       }
@@ -264,35 +310,62 @@ export class ASnake {
     this.game.direction = direction;
   }
 
-  keyBind(element: HTMLElement) {
-    element.addEventListener("keydown", (event) => {
+  public keyBind(element: HTMLElement): () => void {
+    const listner = (event: KeyboardEvent) => {
       switch (event.key) {
         case "ArrowDown":
-          this.direction(ESnakeDirection.down);
+          this.setDirection(EDirection.down);
           break;
         case "ArrowUp":
-          this.direction(ESnakeDirection.up);
+          this.setDirection(EDirection.up);
           break;
         case "ArrowLeft":
-          this.direction(ESnakeDirection.left);
+          this.setDirection(EDirection.left);
           break;
         case "ArrowRight":
-          this.direction(ESnakeDirection.right);
+          this.setDirection(EDirection.right);
           break;
-        case "Space":
-          if (this.state === EGameState.pause) this.resume();
-          if (this.state === EGameState.playing) this.stop();
+        case " ":
+          console.log("space key down");
+          if (this.state === EGameState.pause) {
+            this.resume();
+          } else if (this.state === EGameState.playing) {
+            this.stop();
+          }
           break;
         case "Enter":
-          if (this.state === EGameState.pause) this.start();
+          this.start();
           break;
       }
-    });
+    };
+
+    element.addEventListener("keydown", listner);
+
+    return () => element.removeEventListener("keydown", listner);
   }
 
-  logger(msg: string, type: "log" | "error" | "warn" = "log") {
+  public logger(msg: string, type: "log" | "error" | "warn" = "log") {
     if (this.setting.logger) {
       console[type](msg);
+    }
+  }
+
+  public step(callback?: () => void): { game: ISnakeGame; score: ISnakeScore } {
+    this.move();
+    callback?.();
+    return { game: this.game, score: this.score };
+  }
+
+  public override tick(deltaTime: number) {
+    const interval = 1000 / this.game.speed || 1;
+    if (!this.timeStore.moveInterval) {
+      this.timeStore.moveInterval = 0;
+    }
+
+    this.timeStore.moveInterval += deltaTime;
+    if (this.timeStore.moveInterval > interval) {
+      this.move();
+      this.timeStore.moveInterval -= interval;
     }
   }
 }

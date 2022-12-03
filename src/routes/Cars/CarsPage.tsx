@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { observer } from "mobx-react-lite";
 import { Button, Col, Container, Row } from "react-bootstrap";
-import { CarsStore } from "./CarsStore";
+import { AICars } from "./model/AICars";
 import { StageOneComponent } from "./AIStages/StageOne";
 import { StageTwoComponent } from "./AIStages/StageTwo";
 import { StageThreeComponent } from "./AIStages/StageThree";
@@ -9,7 +9,7 @@ import { StageFourComponent } from "./AIStages/StageFour";
 import { useSearchParams } from "react-router-dom";
 import { useSearchQuery } from "../../utils/useSearchQuery";
 
-const carsStore = new CarsStore();
+const carsStore = new AICars();
 
 const stepInfo = [
   {
@@ -36,15 +36,11 @@ const stepInfo = [
 
 function CarsPage(): JSX.Element {
   const [step, setStep] = useState(0);
-  const [queries, setSearch] = useSearchQuery();
 
   useEffect(() => {
-    async function fetchData() {
-      if (!carsStore.checkData()) {
-        carsStore.fetchCarsData();
-      }
+    if (!carsStore.checkData()) {
+      carsStore.fetchCarsData();
     }
-    fetchData();
   }, []);
 
   const nextStep = useCallback(

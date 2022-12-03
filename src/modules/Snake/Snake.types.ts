@@ -1,9 +1,4 @@
-export enum ESnakeDirection {
-  up = "up",
-  down = "down",
-  left = "left",
-  right = "right",
-}
+import { EDirection, T2DCoord } from "../../utils/global.types";
 
 export enum EHitEvent {
   wall = "wall",
@@ -24,10 +19,8 @@ export interface ISnakeSetting {
   height: number;
   logger: boolean;
   startSpeed: number;
-  score: { lose: number; win: number; apple: number };
+  score: { lose: number; win: number; apple: number; tick: 1 };
 }
-
-export type T2DCoord = [number, number];
 
 export interface ISnake extends Array<T2DCoord> {}
 
@@ -40,6 +33,6 @@ export interface ISnakeStore {
 export interface ISnakeGame {
   speed: number;
   snake: ISnake;
-  direction: ESnakeDirection;
+  direction: EDirection;
   apple: T2DCoord | null;
 }

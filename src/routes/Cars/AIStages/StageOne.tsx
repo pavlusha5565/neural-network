@@ -1,7 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { observer } from "mobx-react-lite";
-import { CarsStore } from "../CarsStore";
-import * as tfvis from "@tensorflow/tfjs-vis";
+import { AICars } from "../model/AICars";
 import {
   Col,
   FormControl,
@@ -11,7 +10,7 @@ import {
   Row,
 } from "react-bootstrap";
 import { FormManager } from "../../../stores/FormManager";
-import { IFormatDataField } from "../CarsStore.types";
+import { Scattetplot } from "../../../components/Charts/Scattetplot";
 
 interface IStageOneForm {
   x: string;
@@ -28,8 +27,7 @@ const defaultFormData = {
 };
 
 export const StageOneComponent = observer(
-  ({ store }: { store: CarsStore }): JSX.Element => {
-    const chartsContanerRef = useRef<HTMLDivElement>(null);
+  ({ store }: { store: AICars }): JSX.Element => {
     const [formManager] = useState(
       () => new FormManager<IStageOneForm>(defaultFormData)
     );
@@ -47,30 +45,14 @@ export const StageOneComponent = observer(
       return keys;
     }, [formManager, store.data]);
 
-    useEffect(() => {
-      if (chartsContanerRef.current && store.checkData()) {
-        const values = store.formatData({
-          ...formManager.store,
-        });
+    const data = useMemo(() => {
+      if (!store.checkData()) return null;
+      const values = store.formatData({
+        ...formManager.store,
+      });
 
-        tfvis.render.scatterplot(
-          chartsContanerRef.current,
-          { values },
-          {
-            xLabel: formManager.store.xLabel,
-            yLabel: formManager.store.yLabel,
-            height: 400,
-          }
-        );
-      }
-    }, [
-      formManager.store,
-      formManager.store.x,
-      formManager.store.y,
-      formManager.store.xLabel,
-      formManager.store.yLabel,
-      store,
-    ]);
+      return { values, series: ["Данные"] };
+    }, [formManager.store, store]);
 
     return (
       <>
@@ -134,7 +116,13 @@ export const StageOneComponent = observer(
           </Col>
         </Row>
         <Row className="mt-4">
-          <div ref={chartsContanerRef} />
+          <Scattetplot
+            data={data}
+            options={{
+              xLabel: formManager.store.xLabel,
+              yLabel: formManager.store.yLabel,
+            }}
+          />
         </Row>
       </>
     );

@@ -1,11 +1,11 @@
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { observer } from "mobx-react-lite";
-import { CarsStore } from "../CarsStore";
+import { AICars } from "../model/AICars";
 import { Col, Row } from "react-bootstrap";
 import * as tfvis from "@tensorflow/tfjs-vis";
 
 export const StageFourComponent = observer(
-  ({ store }: { store: CarsStore }): JSX.Element => {
+  ({ store }: { store: AICars }): JSX.Element => {
     const chartElementRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {

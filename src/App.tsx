@@ -1,10 +1,13 @@
 import React, { useEffect } from "react";
 import AppRoutes from "./routes";
+import ErrorBoundary from "./routes/ErrorPage/ErrorPage";
 
 function App() {
   return (
     <div className="App">
-      <AppRoutes />
+      <ErrorBoundary>
+        <AppRoutes />
+      </ErrorBoundary>
     </div>
   );
 }

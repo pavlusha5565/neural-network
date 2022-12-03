@@ -1,6 +1,5 @@
 import { cloneDeep } from "lodash";
 import { action, makeObservable, observable } from "mobx";
-import { IObject } from "../utils/global.types";
 
 export class FormManager<T extends object> {
   store: T;

@@ -1,60 +1,82 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Button, Col, Container } from "react-bootstrap";
-import { ASnake } from "../../modules/Snake/Snake";
+import React, { useEffect, useState } from "react";
 import clsx from "clsx";
-import s from "./SnakePage.module.scss";
+import { Button, Col, Container, Row } from "react-bootstrap";
+import { ASnake } from "../../modules/Snake/Snake";
 import { observer } from "mobx-react-lite";
+import { AISnake } from "./model/AISnake";
+import { ModelSummary } from "../../components/Charts/ModelSummary";
 import { EHitEvent } from "../../modules/Snake/Snake.types";
-import { cloneDeep } from "lodash";
+import s from "./SnakePage.module.scss";
+import { json } from "stream/consumers";
 
 export function SnakePage() {
   const width = 16;
   const height = 16;
 
-  const [snake] = useState(
+  const [snakeEngine] = useState(
     () => new ASnake({ width, height, startSpeed: 4, logger: true })
   );
+  const [AISnakeInstance] = useState(
+    () => new AISnake(snakeEngine, { size: { width, height } })
+  );
 
-  snake.keyBind(document.body);
-  const playground = useMemo(() => {
-    const element2DMatrix: Array<Array<React.ReactElement>> = [];
-    for (let x = 0; x < width; x++) {
-      for (let y = 0; y < height; y++) {
-        if (!element2DMatrix[x]) {
-          element2DMatrix[x] = [];
-        }
+  AISnakeInstance.generateState();
 
-        const hit = snake.checkHit([x, y]);
+  useEffect(() => {
+    const removeListner = snakeEngine.keyBind(document.body);
+    return removeListner;
+  }, [snakeEngine]);
 
-        element2DMatrix[x][y] = (
-          <div
-            key={`${x}:${y}`}
-            className={clsx(
-              s.SnakePlayground__block,
-              hit === EHitEvent.apple && s.apple,
-              hit === EHitEvent.snake && s.snake
-            )}
-          />
-        );
-      }
-    }
-    return element2DMatrix;
-  }, [snake.game.apple, snake.game.snake, snake]);
-
-  // @ts-ignore
-  window.snake = snake;
   return (
     <Container>
-      <div className={s.SnakePlayground}>
-        {playground.map((row, index) => {
-          return (
-            <div key={`row = ${index}`} className={s.SnakePlayground__row}>
-              {row}
+      <section>
+        <div className={s.SnakePlayground}>
+          {snakeEngine.playground.map((row, indexX) => (
+            <div key={`${indexX}`} className={s.SnakePlayground__row}>
+              {row.reverse().map((col, indexY) => {
+                const hit = snakeEngine.checkHit([col[0], col[1]]);
+                return (
+                  <div
+                    id={JSON.stringify(col)}
+                    key={`${indexX}:${indexY}`}
+                    className={clsx(
+                      s.SnakePlayground__block,
+                      hit === EHitEvent.apple && s.apple,
+                      hit === EHitEvent.snake && s.snake
+                    )}
+                  >
+                    {hit && (
+                      <div
+                        key={`${indexX}:${indexY} element`}
+                        className={clsx(
+                          s.SnakePlayground__element,
+                          hit === EHitEvent.apple && s.apple,
+                          hit === EHitEvent.snake && s.snake
+                        )}
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
-      </div>
-      <Button onClick={() => snake.start()}>Start</Button>
+          ))}
+        </div>
+      </section>
+      <section>
+        <Row>
+          <Col sm={3}>
+            <Button onClick={() => snakeEngine.start()}>Start</Button>
+          </Col>
+          <Col sm={3}>
+            <Button onClick={() => snakeEngine.step()}>Step</Button>
+          </Col>
+        </Row>
+      </section>
+      <section>
+        <Row>
+          <ModelSummary model={AISnakeInstance.model} />
+        </Row>
+      </section>
     </Container>
   );
 }

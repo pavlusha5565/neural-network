@@ -7,7 +7,7 @@ import {
   IFormatedData,
   ITensoredCarsData,
   ITrainModelConfig,
-} from "./CarsStore.types";
+} from "./AICars.types";
 import {
   layers,
   linspace,
@@ -29,7 +29,7 @@ const cacheDefault: ICacheCarsStore = {
   labels: { xLabel: "X Axis", yLabel: "Y Axis" },
 };
 
-export class CarsStore {
+export class AICars {
   data: ICarsResponse[] | null = null;
   cache: ICacheCarsStore = cacheDefault;
 
@@ -198,7 +198,7 @@ export class CarsStore {
     // );
     // const carsData = carsDataResponse.json();
 
-    this.data = require("./CarsData.json") as ICarsResponse[];
+    this.data = require("../CarsData.json") as ICarsResponse[];
     return this.data;
   }
 }

@@ -1,7 +1,6 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { observer } from "mobx-react-lite";
-import { CarsStore } from "../CarsStore";
-import * as tfvis from "@tensorflow/tfjs-vis";
+import { AICars } from "../model/AICars";
 import {
   Button,
   Card,
@@ -13,11 +12,11 @@ import {
   FormLabel,
   FormText,
   Row,
-  ToggleButton,
 } from "react-bootstrap";
-import { IDenseLayerArgs } from "../CarsStore.types";
 import { FormManager } from "../../../stores/FormManager";
 import s from "../CarsPage.module.scss";
+import { ModelSummary } from "../../../components/Charts/ModelSummary";
+import { IDenseLayerArgs } from "../model/AICars.types";
 
 const layerDefaultValue: IDenseLayerArgs = {
   units: 1,
@@ -29,14 +28,13 @@ const layerDefaultValue: IDenseLayerArgs = {
 type IDenseLayerTypes = IDenseLayerArgs[keyof IDenseLayerArgs];
 
 export const StageTwoComponent = observer(
-  ({ store }: { store: CarsStore }): JSX.Element => {
+  ({ store }: { store: AICars }): JSX.Element => {
     const [formManager] = useState(
       () =>
         new FormManager<{ layers: IDenseLayerArgs[] }>({
           layers: [layerDefaultValue],
         })
     );
-    const visualModelRef = useRef<HTMLDivElement>(null);
 
     const changeField = (
       index: number,
@@ -68,9 +66,7 @@ export const StageTwoComponent = observer(
     };
 
     useEffect(() => {
-      const model = store.AIGenerateModel(formManager.storeData.layers);
-      if (!visualModelRef.current || !model) return;
-      tfvis.show.modelSummary(visualModelRef.current, model);
+      store.AIGenerateModel(formManager.storeData.layers);
     }, [formManager.storeData.layers, store]);
 
     return (
@@ -149,7 +145,7 @@ export const StageTwoComponent = observer(
           </Col>
         </Row>
         <Row>
-          <div ref={visualModelRef} />
+          <ModelSummary model={store.cache.model} />
         </Row>
       </>
     );

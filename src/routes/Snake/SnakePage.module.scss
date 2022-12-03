@@ -1,22 +1,35 @@
+$blockSize: 52px;
+
 .Snake {
 }
 
 .SnakePlayground {
-}
-
-$blockSize: 32px;
-
-.SnakePlayground__row {
   display: flex;
+  .SnakePlayground__row {
+    display: flex;
+    flex-direction: column;
+  }
+
   .SnakePlayground__block {
     width: $blockSize;
     height: $blockSize;
-    border: 1px solid black;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+    border: 1px solid rgba($color: #000000, $alpha: 0.2);
+  }
+
+  .SnakePlayground__element {
+    width: 60%;
+    height: 60%;
     &.snake {
       background-color: black;
+      border-radius: 50%;
     }
     &.apple {
       background-color: green;
+      border-radius: 50%;
     }
   }
 }
