@@ -27,8 +27,14 @@ export function calculateVector(
   return isModule ? [Math.abs(vector[0]), Math.abs(vector[1])] : vector;
 }
 
+function lengthVector(vector: T2DVector): number {
+  return Math.sqrt(vector[0] * vector[0] + vector[1] * vector[1]);
+}
+
 export function normalizeVector(vector: T2DVector): T2DVector {
-  return [vector[0] / vector[0], vector[1] / vector[1]];
+  const length = lengthVector(vector);
+  const inverseLength = 1 / length;
+  return [vector[0] * inverseLength, vector[1] * inverseLength];
 }
 
 export function vectorDistance(vector: T2DVector): number {
@@ -49,4 +55,34 @@ export function vectorToBoolArray(vector: T2DVector): TDirectionMatrix {
   return [vector[1] > 0, vector[0] > 0, vector[1] < 0, vector[0] < 0].map(
     (bool) => Number(bool)
   ) as TDirectionMatrix;
+}
+
+function indexOfMax(arr: number[]) {
+  if (arr.length === 0) {
+    return -1;
+  }
+
+  var max = arr[0];
+  var maxIndex = 0;
+
+  for (var i = 1; i < arr.length; i++) {
+    if (arr[i] > max) {
+      maxIndex = i;
+      max = arr[i];
+    }
+  }
+
+  return maxIndex;
+}
+
+export function boolArrayToDirection(
+  matrix: TDirectionMatrix | null
+): EDirection {
+  if (!matrix) return EDirection.up;
+  const index = indexOfMax(matrix);
+  if (index === 0) return EDirection.up;
+  if (index === 1) return EDirection.right;
+  if (index === 2) return EDirection.down;
+  if (index === 3) return EDirection.left;
+  return EDirection.up;
 }

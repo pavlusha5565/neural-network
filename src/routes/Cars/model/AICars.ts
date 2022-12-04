@@ -75,7 +75,6 @@ export class AICars {
 
     this.cache.layers = modelLayersSetup;
     this.cache.model = model;
-    console.log(model);
     // @ts-ignore:next-line
     window.model = model;
     return model;

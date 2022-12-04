@@ -20,14 +20,6 @@ export default class AActor {
       updateOptions: action,
     });
 
-    reaction(
-      () => this.options,
-      () => {
-        console.log(`Update options (${this.options.name})`);
-        this.onActorInit();
-      }
-    );
-
     this.beginPlay();
   }
 

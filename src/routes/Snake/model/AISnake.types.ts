@@ -1,4 +1,4 @@
-import { AdamOptimizer, Sequential } from "@tensorflow/tfjs";
+import { AdamOptimizer, Sequential, Tensor } from "@tensorflow/tfjs";
 import { EDirection } from "../../../utils/global.types";
 
 export interface ISnakeAISetting {
@@ -16,10 +16,18 @@ export interface ISnakeAISetting {
     beta2?: number | undefined;
   };
   size: { width: number; height: number };
+  gamma: number;
 }
 
 export interface ISnakeCache {
   model: Sequential | null;
+}
+
+export interface IAIBatchData {
+  data: Tensor;
+  predict: Tensor | null;
+  moveTo: EDirection;
+  rewards: Tensor;
 }
 
 export const EActionSpace = {

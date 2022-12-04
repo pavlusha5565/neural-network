@@ -10,6 +10,7 @@ export enum EGameState {
   ready = "ready",
   pause = "pause",
   playing = "playing",
+  autoplay = "autoplay",
   lose = "lose",
   win = "win",
 }
@@ -19,7 +20,7 @@ export interface ISnakeSetting {
   height: number;
   logger: boolean;
   startSpeed: number;
-  score: { lose: number; win: number; apple: number; tick: 1 };
+  score: { lose: number; win: number; apple: number; step: 1 };
 }
 
 export interface ISnake extends Array<T2DCoord> {}

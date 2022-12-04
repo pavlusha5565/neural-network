@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import clsx from "clsx";
 import { Button, Col, Container, Row } from "react-bootstrap";
 import { ASnake } from "../../modules/Snake/Snake";
@@ -8,24 +8,44 @@ import { ModelSummary } from "../../components/Charts/ModelSummary";
 import { EHitEvent } from "../../modules/Snake/Snake.types";
 import s from "./SnakePage.module.scss";
 import { json } from "stream/consumers";
+import { step } from "@tensorflow/tfjs";
 
 export function SnakePage() {
   const width = 16;
   const height = 16;
 
   const [snakeEngine] = useState(
-    () => new ASnake({ width, height, startSpeed: 4, logger: true })
+    () => new ASnake({ width, height, startSpeed: 4, logger: false })
   );
   const [AISnakeInstance] = useState(
     () => new AISnake(snakeEngine, { size: { width, height } })
   );
 
-  AISnakeInstance.generateState();
-
   useEffect(() => {
     const removeListner = snakeEngine.keyBind(document.body);
     return removeListner;
   }, [snakeEngine]);
+
+  useEffect(() => {
+    AISnakeInstance.AIGenerateModel();
+  }, [AISnakeInstance]);
+
+  const train = useCallback(async () => {
+    for (let i = 0; i < 100; i++) {
+      const predictedBatch = AISnakeInstance.makeTrainBatch(100);
+      await AISnakeInstance.trainBatch(predictedBatch);
+    }
+  }, [AISnakeInstance]);
+
+  const startInteraction = useCallback(() => {
+    const predictedBatch = AISnakeInstance.makeTrainBatch(1000);
+    console.log(
+      predictedBatch.map((i) => ({ ...i, predict: i.predict?.arraySync() }))
+    );
+    snakeEngine.setAutoplayData(predictedBatch.map((i) => i.moveTo));
+    snakeEngine.startAI();
+    AISnakeInstance.trainBatch(predictedBatch);
+  }, [AISnakeInstance, snakeEngine]);
 
   return (
     <Container>
@@ -65,10 +85,13 @@ export function SnakePage() {
       <section>
         <Row>
           <Col sm={3}>
-            <Button onClick={() => snakeEngine.start()}>Start</Button>
+            <Button onClick={() => startInteraction()}>startInteraction</Button>
+          </Col>{" "}
+          <Col sm={3}>
+            <Button onClick={() => train()}>train</Button>
           </Col>
           <Col sm={3}>
-            <Button onClick={() => snakeEngine.step()}>Step</Button>
+            <Button onClick={() => snakeEngine.step()}>Start</Button>
           </Col>
         </Row>
       </section>

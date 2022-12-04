@@ -46,7 +46,6 @@ export const StageTwoComponent = observer(
         ...layers[index],
         [field]: value,
       };
-      console.log(value, layers[index]);
       formManager.updateField("layers", layers);
     };
 

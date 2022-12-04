@@ -3,14 +3,19 @@ import { layers, losses, sequential, train } from "@tensorflow/tfjs";
 import * as tf from "@tensorflow/tfjs";
 import {
   directionState,
+  IAIBatchData,
   ISnakeAISetting,
   ISnakeCache,
   IStateSpace,
 } from "./AISnake.types";
-import { ISnakeGame } from "../../../modules/Snake/Snake.types";
-import { calculateVector, vectorToBoolArray } from "../../../utils/math";
+import { EHitEvent, ISnakeGame } from "../../../modules/Snake/Snake.types";
+import {
+  boolArrayToDirection,
+  calculateVector,
+  vectorToBoolArray,
+} from "../../../utils/math";
 import { applyObject } from "../../../utils/objects";
-import { EDirection, T2DVector } from "../../../utils/global.types";
+import { EDirection, TDirectionMatrix } from "../../../utils/global.types";
 import { ASnake } from "../../../modules/Snake/Snake";
 
 export class AISnake {
@@ -21,6 +26,7 @@ export class AISnake {
     layerSizes: [128, 128, 128],
     adamSetting: { learningRate: 0.2 },
     size: { width: 24, height: 24 },
+    gamma: 0.01,
   };
   snakeEngine: ASnake | null = null;
 
@@ -40,12 +46,47 @@ export class AISnake {
     window.tf = tf;
   }
 
-  generateState(): tf.Tensor | null {
-    if (!this.snakeEngine) return null;
-    const snakeHead: [number, number] = this.snakeEngine.game.snake[0];
-    const snakeVector = this.snakeEngine.snakeMoveVector;
-    const appleVector = this.snakeEngine.appleVector || [0, 0];
-    console.log(appleVector);
+  AIGenerateModel() {
+    const model = sequential();
+    const { layerSizes } = this.setting;
+
+    model.add(
+      layers.dense({
+        units: layerSizes[0],
+        inputShape: [12],
+        activation: "relu",
+      })
+    );
+
+    for (let index = 1; index < layerSizes.length; index++) {
+      model.add(
+        layers.dense({
+          units: layerSizes[index],
+          activation: "relu",
+        })
+      );
+    }
+
+    model.add(
+      layers.dense({
+        units: 4,
+        activation: "softmax",
+      })
+    );
+
+    model.compile({
+      optimizer: train.adam(this.setting.adamSetting.learningRate),
+      loss: losses.meanSquaredError,
+      metrics: ["accuracy", "mse"],
+    });
+
+    this.cache.model = model;
+  }
+
+  generateState(snakeEngine: ASnake): tf.Tensor {
+    const snakeHead: [number, number] = snakeEngine.game.snake[0];
+    const snakeVector = snakeEngine.snakeMoveVector;
+    const appleVector = snakeEngine.appleVector || [0, 0];
 
     const size = this.setting.size;
 
@@ -62,43 +103,67 @@ export class AISnake {
 
     return tf.tensor(
       [...stateSpace.apple, ...stateSpace.wall, ...stateSpace.snake],
-      [3, 4]
+      [1, 12]
     );
   }
 
-  AIGenerateModel() {
-    const model = sequential();
-    const { layerSizes } = this.setting;
+  makeTrainBatch(steps: number): IAIBatchData[] {
+    if (!this.snakeEngine) return [];
+    const batch = [];
+    this.snakeEngine.restart();
 
-    for (let index = 0; index < layerSizes.length; index++) {
-      const layer = layerSizes[index];
-      model.add(
-        layers.dense({
-          units: layer,
-          inputShape: index === 0 ? [this.setting.state_space] : undefined,
-          activation: "relu",
-        })
+    for (let step = 0; step < steps; step++) {
+      const stateTesor = this.generateState(this.snakeEngine);
+
+      const predict = this.predict(stateTesor) as tf.Tensor;
+
+      const nextMove = boolArrayToDirection(
+        // @ts-ignore
+        predict?.arraySync()[0] as TDirectionMatrix
       );
+
+      this.snakeEngine.setDirection(nextMove);
+      const moveData = this.snakeEngine.step();
+
+      const rewards = tf.scalar(moveData.score.totalScore * this.setting.gamma);
+      const rewardsTrain = tf.add(predict, rewards);
+      rewardsTrain.print();
+
+      batch.push({
+        data: stateTesor,
+        predict: predict,
+        moveTo: nextMove,
+        rewards: rewardsTrain,
+      });
+
+      if (moveData.hit === EHitEvent.snake || moveData.hit === EHitEvent.wall) {
+        break;
+      }
     }
-
-    model.add(
-      layers.dense({
-        units: 4,
-        activation: "softmax",
-      })
-    );
-
-    model.compile({
-      optimizer: train.adam(),
-      loss: losses.meanSquaredError,
-      metrics: ["mse"],
-    });
-
-    this.cache.model = model;
+    return batch;
   }
 
-  predict(data: ISnakeGame, options: { width: number; height: number }) {
-    const tensor = this.generateState();
+  async trainBatch(batch: IAIBatchData[]) {
+    let trainData = batch.map((i) => i.data);
+    const trainTensor = tf.concat(trainData, 0).reshape([batch.length, 12]);
+
+    const rewards = batch.map((i) => i.rewards);
+    const rewardsTensor = tf.concat(rewards, 0).reshape([batch.length, 4]);
+
+    await this.model?.fit(trainTensor, rewardsTensor, {
+      callbacks: {
+        onBatchEnd: (...logs) => {
+          console.log(logs);
+        },
+      },
+    });
+  }
+
+  predict(tensor: tf.Tensor): tf.Tensor | null {
+    if (this.model) {
+      return this.model.predict(tensor) as tf.Tensor;
+    }
+    return null;
   }
 
   get model() {

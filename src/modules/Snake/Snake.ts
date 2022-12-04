@@ -11,6 +11,7 @@ import { cloneDeep, random } from "lodash";
 import {
   calculateVector,
   directionToVector,
+  normalizeVector,
   sumArrays,
 } from "../../utils/math";
 import { applyObject } from "../../utils/objects";
@@ -32,7 +33,7 @@ const settingDefault: ISnakeSetting = {
     win: 100,
     lose: 50,
     apple: 5,
-    tick: 1,
+    step: 1,
   },
 };
 
@@ -55,6 +56,7 @@ export class ASnake extends AActor {
   score: ISnakeScore = scoreDefault;
   state: EGameState = EGameState.ready;
   timeStore: { [key: string]: number } = {};
+  autoPlayData: EDirection[] = [];
 
   constructor(setting: Partial<ISnakeSetting> = {}) {
     super(defaultActoreSetting);
@@ -65,10 +67,12 @@ export class ASnake extends AActor {
       game: observable,
       score: observable,
       state: observable,
+      autoPlayData: observable,
       makeGame: action,
       makeSnake: action,
       makeApple: action,
       start: action,
+      startAI: action,
       stop: action,
       restart: action,
       resume: action,
@@ -78,6 +82,7 @@ export class ASnake extends AActor {
       setDirection: action,
       appleVector: computed,
       snakeMoveVector: computed,
+      setAutoplayData: action,
     });
 
     // @ts-ignore
@@ -205,6 +210,13 @@ export class ASnake extends AActor {
     this.StartActorTick();
   }
 
+  startAI(): void {
+    this.logger("Start ai game");
+    this.makeGame();
+    this.state = EGameState.autoplay;
+    this.StartActorTick();
+  }
+
   stop(): void {
     this.logger("Stop game");
     this.state = EGameState.pause;
@@ -221,7 +233,6 @@ export class ASnake extends AActor {
     this.logger("Restart game");
     this.StopActorTick();
     this.makeGame();
-    console.log(cloneDeep(this.game.snake));
   }
 
   endGame(state: EGameState): void {
@@ -284,6 +295,21 @@ export class ASnake extends AActor {
       return { position: nextPosition, hit };
     }
 
+    const snakeVector = this.snakeMoveVector;
+    const appleVector = calculateVector(
+      nextPosition,
+      this.game.apple || [0, 0]
+    );
+    const normAppleVector = normalizeVector(appleVector || [0, 0]).map((i) =>
+      i > 0 ? 1 : i === 0 ? 0 : -1
+    );
+    if (
+      snakeVector[0] === normAppleVector[0] ||
+      snakeVector[1] === normAppleVector[1]
+    ) {
+      this.score.totalScore += this.setting.score.step;
+    }
+
     snake.pop();
 
     this.game.snake = snake;
@@ -326,7 +352,6 @@ export class ASnake extends AActor {
           this.setDirection(EDirection.right);
           break;
         case " ":
-          console.log("space key down");
           if (this.state === EGameState.pause) {
             this.resume();
           } else if (this.state === EGameState.playing) {
@@ -350,10 +375,18 @@ export class ASnake extends AActor {
     }
   }
 
-  public step(callback?: () => void): { game: ISnakeGame; score: ISnakeScore } {
-    this.move();
+  public step(callback?: () => void): {
+    game: ISnakeGame;
+    score: ISnakeScore;
+    hit: EHitEvent | null;
+  } {
+    const { hit } = this.move();
     callback?.();
-    return { game: this.game, score: this.score };
+    return { game: this.game, score: this.score, hit };
+  }
+
+  public setAutoplayData(direction: EDirection[]) {
+    this.autoPlayData = direction;
   }
 
   public override tick(deltaTime: number) {
@@ -362,10 +395,30 @@ export class ASnake extends AActor {
       this.timeStore.moveInterval = 0;
     }
 
-    this.timeStore.moveInterval += deltaTime;
-    if (this.timeStore.moveInterval > interval) {
-      this.move();
-      this.timeStore.moveInterval -= interval;
+    if (this.state === EGameState.playing) {
+      this.timeStore.moveInterval += deltaTime;
+      if (this.timeStore.moveInterval > interval) {
+        this.move();
+        this.timeStore.moveInterval -= interval;
+      }
+    }
+
+    if (this.state === EGameState.autoplay) {
+      this.timeStore.moveInterval += deltaTime;
+      if (this.timeStore.moveInterval > interval) {
+        const autoPlayData = this.autoPlayData;
+        this.setDirection(autoPlayData[0]);
+
+        this.move();
+
+        autoPlayData.shift();
+        this.autoPlayData = autoPlayData;
+        if (autoPlayData.length <= 0) {
+          this.restart();
+        }
+
+        this.timeStore.moveInterval -= interval;
+      }
     }
   }
 }
