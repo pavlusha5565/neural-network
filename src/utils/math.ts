@@ -50,13 +50,26 @@ export function directionToVector(direction: EDirection) {
   return vectorDirection;
 }
 
-// [TOP, RIGHT, BOTTOM, LEFT]
+// Make vector direction to boolean data array(Shape [-1, 1]). [TOP, RIGHT, BOTTOM, LEFT]
 export function vectorToBoolArray(vector: T2DVector): TDirectionMatrix {
   return [vector[1] > 0, vector[0] > 0, vector[1] < 0, vector[0] < 0].map(
     (bool) => Number(bool)
   ) as TDirectionMatrix;
 }
 
+export function boolArrayToDirection(
+  matrix: TDirectionMatrix | null
+): EDirection {
+  if (!matrix) return EDirection.up;
+  const index = indexOfMax(matrix);
+  if (index === 0) return EDirection.up;
+  if (index === 1) return EDirection.right;
+  if (index === 2) return EDirection.down;
+  if (index === 3) return EDirection.left;
+  return EDirection.up;
+}
+
+// Get index of maxumum number.
 function indexOfMax(arr: number[]) {
   if (arr.length === 0) {
     return -1;
@@ -73,16 +86,4 @@ function indexOfMax(arr: number[]) {
   }
 
   return maxIndex;
-}
-
-export function boolArrayToDirection(
-  matrix: TDirectionMatrix | null
-): EDirection {
-  if (!matrix) return EDirection.up;
-  const index = indexOfMax(matrix);
-  if (index === 0) return EDirection.up;
-  if (index === 1) return EDirection.right;
-  if (index === 2) return EDirection.down;
-  if (index === 3) return EDirection.left;
-  return EDirection.up;
 }

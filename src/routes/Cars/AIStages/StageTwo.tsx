@@ -64,9 +64,7 @@ export const StageTwoComponent = observer(
       formManager.updateField("layers", data);
     };
 
-    useEffect(() => {
-      store.AIGenerateModel(formManager.storeData.layers);
-    }, [formManager.storeData.layers, store]);
+    store.AIGenerateModel(formManager.storeData.layers);
 
     return (
       <>

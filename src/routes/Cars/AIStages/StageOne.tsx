@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { observer } from "mobx-react-lite";
 import { AICars } from "../model/AICars";
 import {
@@ -52,7 +52,11 @@ export const StageOneComponent = observer(
       });
 
       return { values, series: ["Данные"] };
-    }, [formManager.store, store]);
+    }, [formManager.store.x, formManager.store.y, store]);
+
+    useEffect(() => {
+      console.log(data);
+    }, [data]);
 
     return (
       <>

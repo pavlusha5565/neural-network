@@ -1,5 +1,5 @@
 import { cloneDeep } from "lodash";
-import { action, makeObservable, observable } from "mobx";
+import { action, computed, makeObservable, observable } from "mobx";
 
 export class FormManager<T extends object> {
   store: T;
@@ -8,6 +8,7 @@ export class FormManager<T extends object> {
     this.store = initStore;
     makeObservable(this, {
       store: observable,
+      storeData: computed,
       updateStore: action,
       updateField: action,
     });

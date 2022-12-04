@@ -113,22 +113,29 @@ export class AISnake {
     this.snakeEngine.restart();
 
     for (let step = 0; step < steps; step++) {
+      // generate state of apple, wall and snake vectors (Shape [-1,1])
       const stateTesor = this.generateState(this.snakeEngine);
 
+      // generate prediction on each step
       const predict = this.predict(stateTesor) as tf.Tensor;
 
+      // parse prediction direction of number*4[] to EDirection enum
       const nextMove = boolArrayToDirection(
         // @ts-ignore
         predict?.arraySync()[0] as TDirectionMatrix
       );
 
+      // set direction and run snake step.
       this.snakeEngine.setDirection(nextMove);
       const moveData = this.snakeEngine.step();
 
+      // умножаем вычесленные веса направлений на общее количество
+      //   очков после хода(пересчитывается каждый ход) и скармливаем
+      //   как целевые значение для обучения
       const rewards = tf.scalar(moveData.score.totalScore * this.setting.gamma);
       const rewardsTrain = tf.add(predict, rewards);
-      rewardsTrain.print();
 
+      // State for train
       batch.push({
         data: stateTesor,
         predict: predict,
@@ -144,12 +151,15 @@ export class AISnake {
   }
 
   async trainBatch(batch: IAIBatchData[]) {
+    // Make single tensor
     let trainData = batch.map((i) => i.data);
     const trainTensor = tf.concat(trainData, 0).reshape([batch.length, 12]);
 
+    // Make single tensor
     const rewards = batch.map((i) => i.rewards);
     const rewardsTensor = tf.concat(rewards, 0).reshape([batch.length, 4]);
 
+    // Fit model
     await this.model?.fit(trainTensor, rewardsTensor, {
       callbacks: {
         onBatchEnd: (...logs) => {
