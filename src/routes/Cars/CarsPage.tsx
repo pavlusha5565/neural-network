@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { observer } from "mobx-react-lite";
 import { Button, Col, Container, Row } from "react-bootstrap";
 import { AICars } from "./model/AICars";
@@ -6,8 +12,6 @@ import { StageOneComponent } from "./AIStages/StageOne";
 import { StageTwoComponent } from "./AIStages/StageTwo";
 import { StageThreeComponent } from "./AIStages/StageThree";
 import { StageFourComponent } from "./AIStages/StageFour";
-import { useSearchParams } from "react-router-dom";
-import { useSearchQuery } from "../../utils/useSearchQuery";
 
 const carsStore = new AICars();
 
@@ -57,13 +61,17 @@ function CarsPage(): JSX.Element {
     [step]
   );
 
-  const renderData = stepInfo[step];
-  const Component = renderData.component;
+  const [renderData, Component] = useMemo(() => {
+    const renderData = stepInfo[step];
+    return [renderData, renderData.component];
+  }, [step]);
 
   return (
     <Container className="content">
       <Row>
-        <h2>{renderData.header}</h2>
+        <h2>
+          {renderData.header} | Шаг:{renderData.step} / {stepInfo.length}
+        </h2>
         <Component store={carsStore} />
       </Row>
       <Row className="justify-content-md-center mt-4">

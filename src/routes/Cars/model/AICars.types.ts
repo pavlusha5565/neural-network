@@ -1,6 +1,28 @@
 import { Rank, Sequential, Shape, Tensor } from "@tensorflow/tfjs";
 import { DenseLayerArgs } from "@tensorflow/tfjs-layers/dist/layers/core";
 
+export enum EOptimizers {
+  adam = "adam",
+  sgd = "sgd",
+  adamax = "adamax",
+  adagrad = "adagrad",
+  adadelta = "adadelta",
+  momentum = "momentum",
+  rmsprop = "rmsprop",
+}
+
+export enum ELosses {
+  absoluteDifference = "absoluteDifference",
+  computeWeightedLoss = "computeWeightedLoss",
+  cosineDistance = "cosineDistance",
+  hingeLoss = "hingeLoss",
+  huberLoss = "huberLoss",
+  logLoss = "logLoss",
+  meanSquaredError = "meanSquaredError",
+  sigmoidCrossEntropy = "sigmoidCrossEntropy",
+  categoricalCrossentropy = "categoricalCrossentropy",
+}
+
 export interface ICarsResponse {
   [key: string]: number | string | null;
 }
@@ -48,4 +70,9 @@ export interface IDenseLayerArgs {
   batchSize: DenseLayerArgs["batchSize"];
   inputShape: DenseLayerArgs["inputShape"];
   useBias: DenseLayerArgs["useBias"];
+}
+
+export interface ICompileOptions {
+  optimizer: EOptimizers;
+  losses: string;
 }

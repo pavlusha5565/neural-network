@@ -54,10 +54,6 @@ export const StageOneComponent = observer(
       return { values, series: ["Данные"] };
     }, [formManager.store.x, formManager.store.y, store]);
 
-    useEffect(() => {
-      console.log(data);
-    }, [data]);
-
     return (
       <>
         <Row>

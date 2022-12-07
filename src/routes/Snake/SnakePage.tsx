@@ -39,9 +39,7 @@ export function SnakePage() {
 
   const startInteraction = useCallback(() => {
     const predictedBatch = AISnakeInstance.makeTrainBatch(1000);
-    console.log(
-      predictedBatch.map((i) => ({ ...i, predict: i.predict?.arraySync() }))
-    );
+
     snakeEngine.setAutoplayData(predictedBatch.map((i) => i.moveTo));
     snakeEngine.startAI();
     AISnakeInstance.trainBatch(predictedBatch);

@@ -1,6 +1,15 @@
 import React from "react";
-import { Col, Container, ListGroup, NavLink, Row } from "react-bootstrap";
+import {
+  Button,
+  Col,
+  Container,
+  ListGroup,
+  NavLink,
+  Row,
+} from "react-bootstrap";
 import { Link } from "react-router-dom";
+import { MyFormControl } from "../../components/Forms/Former";
+import { FieldInput } from "../../components/Forms/FieldInput";
 import { Routes } from "../index";
 
 export default function IndexPage() {

@@ -2,6 +2,7 @@ import { makeObservable, action, observable } from "mobx";
 import {
   ICacheCarsStore,
   ICarsResponse,
+  ICompileOptions,
   IDenseLayerArgs,
   IFormatDataField,
   IFormatedData,
@@ -66,17 +67,25 @@ export class AICars {
     return data;
   }
 
-  AIGenerateModel(modelLayersSetup: IDenseLayerArgs[]): Sequential {
+  AIGenerateModel(
+    modelLayersSetup: IDenseLayerArgs[],
+    compileOptions: ICompileOptions
+  ): Sequential {
     const model = sequential();
 
     modelLayersSetup.forEach((layer: IDenseLayerArgs) => {
       model.add(layers.dense(layer));
     });
 
+    model.compile({
+      optimizer: compileOptions.optimizer,
+      loss: compileOptions.losses,
+      metrics: ["accuracy", "mse"],
+    });
+
     this.cache.layers = modelLayersSetup;
     this.cache.model = model;
-    // @ts-ignore:next-line
-    window.model = model;
+
     return model;
   }
 
@@ -134,12 +143,6 @@ export class AICars {
     fitCallbacks?: any,
     config?: ITrainModelConfig
   ) {
-    model.compile({
-      optimizer: train.adam(),
-      loss: losses.meanSquaredError,
-      metrics: ["mse"],
-    });
-
     const batchSize = config?.batchSize || 25;
     const epochs = config?.epochs || 80;
 
